@@ -30,6 +30,7 @@ FetchTimeMCPは、Model Context Protocol (MCP) に準拠した時間・日付情
 
 - Java 21以上
 - Maven 3.8以上
+- Claude Desktop App
 
 ### インストール
 
@@ -48,17 +49,66 @@ mvn test
 java -jar target/FetchTimeMCP-1.0-SNAPSHOT.jar
 ```
 
-### 環境変数
+### Claude Desktop設定
+
+Claude Desktop Appで本MCPサーバーを使用するには、以下の設定を`.claude/claude_desktop_config.json`に追加してください：
+
+```json
+{
+  "mcpServers": {
+    "fetchtime": {
+      "command": "java",
+      "args": [
+        "-jar",
+        "C:/Dev/FetchTimeMCP/target/FetchTimeMCP-1.0-SNAPSHOT.jar"
+      ]
+    }
+  }
+}
+```
+
+#### Windows（PowerShell/CMD）での設定例
+
+```json
+{
+  "mcpServers": {
+    "fetchtime": {
+      "command": "cmd",
+      "args": [
+        "/c",
+        "java -jar C:\\Dev\\FetchTimeMCP\\target\\FetchTimeMCP-1.0-SNAPSHOT.jar"
+      ]
+    }
+  }
+}
+```
+
+#### macOS/Linuxでの設定例
+
+```json
+{
+  "mcpServers": {
+    "fetchtime": {
+      "command": "/usr/bin/java",
+      "args": [
+        "-jar",
+        "/home/user/FetchTimeMCP/target/FetchTimeMCP-1.0-SNAPSHOT.jar"
+      ]
+    }
+  }
+}
+```
+
+### 環境変数（オプション）
+
+現在の実装では外部APIキーは不要です。WorldTimeAPIは無料のパブリックAPIとして利用できます。
 
 ```bash
-# 必須のAPIキー
-export WORLDTIME_API_KEY=your_api_key
-export TIMEZONEDB_API_KEY=your_api_key
-export HOLIDAY_API_KEY=your_api_key
-
 # オプション設定
-export MCP_SERVER_PORT=3000
-export MCP_SERVER_HOST=localhost
+export MCP_SERVER_PORT=3000  # デフォルト: 3000
+export MCP_SERVER_HOST=localhost  # デフォルト: localhost
+export CACHE_ENABLED=true  # デフォルト: true
+export LOG_LEVEL=INFO  # デフォルト: INFO
 ```
 
 ## 🔧 使用例

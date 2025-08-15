@@ -1,18 +1,24 @@
 package com.github.yuu1111.tools.impl;
 
-import com.github.yuu1111.protocol.MCPError;
 import com.github.yuu1111.tools.MCPTool;
 import com.github.yuu1111.tools.ToolExecutionException;
 import com.github.yuu1111.tools.ToolResponse;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-
-import java.time.*;
+import java.time.DateTimeException;
+import java.time.Duration;
+import java.time.Instant;
+import java.time.LocalDateTime;
+import java.time.ZoneId;
+import java.time.ZonedDateTime;
 import java.time.format.DateTimeFormatter;
 import java.time.format.DateTimeParseException;
-import java.time.temporal.ChronoUnit;
-import java.util.*;
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.Set;
 import java.util.stream.Collectors;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 /**
  * タイムゾーン変換ツール
@@ -20,7 +26,7 @@ import java.util.stream.Collectors;
  */
 public class ConvertTimezone implements MCPTool {
     private static final Logger logger = LoggerFactory.getLogger(ConvertTimezone.class);
-    
+
     private static final DateTimeFormatter DEFAULT_FORMATTER = DateTimeFormatter.ISO_OFFSET_DATE_TIME;
     private static final Set<String> COMMON_FORMATS = Set.of(
         "yyyy-MM-dd HH:mm:ss",
@@ -31,17 +37,17 @@ public class ConvertTimezone implements MCPTool {
         "dd/MM/yyyy HH:mm:ss",
         "MM/dd/yyyy HH:mm:ss"
     );
-    
+
     @Override
     public String getName() {
         return "convert_timezone";
     }
-    
+
     @Override
     public String getDescription() {
         return "Convert datetime between different timezones with DST support";
     }
-    
+
     @Override
     public Map<String, Object> getParameterSchema() {
         return Map.of(
@@ -94,11 +100,11 @@ public class ConvertTimezone implements MCPTool {
             "required", new String[]{}
         );
     }
-    
+
     @Override
     public ToolResponse execute(Map<String, Object> parameters) throws ToolExecutionException {
         logger.debug("Executing convert_timezone with parameters: {}", parameters);
-        
+
         try {
             // パラメータ取得
             String datetimeStr = getParameter(parameters, "datetime", null);
@@ -109,21 +115,21 @@ public class ConvertTimezone implements MCPTool {
             boolean includeDstInfo = getParameter(parameters, "include_dst_info", false);
             boolean includeTimeDiff = getParameter(parameters, "include_time_difference", true);
             Map<String, Object> relativeTime = getMapParameter(parameters, "relative_time");
-            
+
             // 変換対象の日時を決定
             ZonedDateTime sourceDateTime = determineSourceDateTime(
                 datetimeStr, fromTimezone, relativeTime
             );
-            
+
             // 変換先タイムゾーンのリストを作成
             List<String> targetZones = determineTargetZones(toTimezone, toTimezones);
             if (targetZones.isEmpty()) {
                 throw new ToolExecutionException("No target timezone specified");
             }
-            
+
             // レスポンスビルダー
             ToolResponse.Builder builder = ToolResponse.builder();
-            
+
             // 元の日時情報
             builder.withData("source", Map.of(
                 "datetime", formatDateTime(sourceDateTime, outputFormat),
@@ -131,7 +137,7 @@ public class ConvertTimezone implements MCPTool {
                 "unix_timestamp", sourceDateTime.toInstant().getEpochSecond(),
                 "offset", sourceDateTime.getOffset().toString()
             ));
-            
+
             // 単一タイムゾーン変換
             if (targetZones.size() == 1) {
                 String targetZone = targetZones.get(0);
@@ -139,7 +145,7 @@ public class ConvertTimezone implements MCPTool {
                     sourceDateTime, targetZone, outputFormat, includeDstInfo, includeTimeDiff
                 );
                 builder.withData("target", result);
-            } 
+            }
             // 複数タイムゾーン変換
             else {
                 List<Map<String, Object>> results = targetZones.stream()
@@ -157,21 +163,21 @@ public class ConvertTimezone implements MCPTool {
                         }
                     })
                     .collect(Collectors.toList());
-                
+
                 builder.withData("targets", results);
             }
-            
+
             // 追加情報
             if (includeTimeDiff && targetZones.size() > 1) {
                 builder.withData("time_matrix", createTimeMatrix(sourceDateTime, targetZones));
             }
-            
+
             // メタデータ
             builder.withMetadata("conversion_count", targetZones.size());
             builder.withMetadata("execution_time", System.currentTimeMillis());
-            
+
             return builder.build();
-            
+
         } catch (DateTimeParseException e) {
             throw new ToolExecutionException("Invalid datetime format: " + e.getMessage());
         } catch (DateTimeException e) {
@@ -181,43 +187,43 @@ public class ConvertTimezone implements MCPTool {
             throw new ToolExecutionException("Conversion failed: " + e.getMessage(), e);
         }
     }
-    
+
     /**
      * ソース日時を決定
      */
     private ZonedDateTime determineSourceDateTime(
-            String datetimeStr, String fromTimezone, Map<String, Object> relativeTime) 
+            String datetimeStr, String fromTimezone, Map<String, Object> relativeTime)
             throws ToolExecutionException {
-        
+
         ZoneId fromZone = parseTimezone(fromTimezone);
-        
+
         // 相対時間が指定されている場合
         if (relativeTime != null && !relativeTime.isEmpty()) {
             return calculateRelativeTime(fromZone, relativeTime);
         }
-        
+
         // 日時文字列が指定されていない場合は現在時刻
         if (datetimeStr == null || datetimeStr.isBlank()) {
             return ZonedDateTime.now(fromZone);
         }
-        
+
         // 日時文字列をパース
         return parseDateTime(datetimeStr, fromZone);
     }
-    
+
     /**
      * 相対時間を計算
      */
     private ZonedDateTime calculateRelativeTime(ZoneId zone, Map<String, Object> relativeTime) {
         ZonedDateTime now = ZonedDateTime.now(zone);
-        
+
         Integer amount = (Integer) relativeTime.get("amount");
         String unit = (String) relativeTime.get("unit");
-        
+
         if (amount == null || unit == null) {
             return now;
         }
-        
+
         return switch (unit.toUpperCase()) {
             case "MINUTES" -> now.plusMinutes(amount);
             case "HOURS" -> now.plusHours(amount);
@@ -227,20 +233,20 @@ public class ConvertTimezone implements MCPTool {
             default -> now;
         };
     }
-    
+
     /**
      * 日時文字列をパース
      */
-    private ZonedDateTime parseDateTime(String datetimeStr, ZoneId zone) 
+    private ZonedDateTime parseDateTime(String datetimeStr, ZoneId zone)
             throws ToolExecutionException {
-        
+
         // ISO形式を試す
         try {
             if (datetimeStr.contains("T") && (datetimeStr.contains("+") || datetimeStr.contains("Z"))) {
                 return ZonedDateTime.parse(datetimeStr);
             }
         } catch (DateTimeParseException ignored) {}
-        
+
         // タイムゾーン情報なしのISO形式
         try {
             if (datetimeStr.contains("T")) {
@@ -248,7 +254,7 @@ public class ConvertTimezone implements MCPTool {
                 return ldt.atZone(zone);
             }
         } catch (DateTimeParseException ignored) {}
-        
+
         // 一般的なフォーマットを試す
         for (String pattern : COMMON_FORMATS) {
             try {
@@ -257,7 +263,7 @@ public class ConvertTimezone implements MCPTool {
                 return ldt.atZone(zone);
             } catch (DateTimeParseException ignored) {}
         }
-        
+
         // Unix timestampを試す
         try {
             long timestamp = Long.parseLong(datetimeStr);
@@ -268,57 +274,57 @@ public class ConvertTimezone implements MCPTool {
                 return ZonedDateTime.ofInstant(Instant.ofEpochMilli(timestamp), zone);
             }
         } catch (NumberFormatException ignored) {}
-        
+
         throw new ToolExecutionException("Unable to parse datetime: " + datetimeStr);
     }
-    
+
     /**
      * ターゲットタイムゾーンのリストを決定
      */
     private List<String> determineTargetZones(String toTimezone, List<String> toTimezones) {
         List<String> zones = new ArrayList<>();
-        
+
         if (toTimezone != null && !toTimezone.isBlank()) {
             zones.add(toTimezone);
         }
-        
+
         if (toTimezones != null && !toTimezones.isEmpty()) {
             zones.addAll(toTimezones);
         }
-        
+
         // 重複を除去
         return zones.stream().distinct().collect(Collectors.toList());
     }
-    
+
     /**
      * タイムゾーンに変換
      */
     private Map<String, Object> convertToTimezone(
-            ZonedDateTime sourceDateTime, 
+            ZonedDateTime sourceDateTime,
             String targetTimezone,
             String outputFormat,
             boolean includeDstInfo,
             boolean includeTimeDiff) throws ToolExecutionException {
-        
+
         ZoneId targetZone = parseTimezone(targetTimezone);
         ZonedDateTime targetDateTime = sourceDateTime.withZoneSameInstant(targetZone);
-        
+
         Map<String, Object> result = new HashMap<>();
         result.put("datetime", formatDateTime(targetDateTime, outputFormat));
         result.put("timezone", targetZone.getId());
         result.put("unix_timestamp", targetDateTime.toInstant().getEpochSecond());
         result.put("offset", targetDateTime.getOffset().toString());
-        
+
         // 時差情報
         if (includeTimeDiff) {
             Duration diff = Duration.between(
                 sourceDateTime.toOffsetDateTime(),
                 targetDateTime.toOffsetDateTime()
             );
-            
-            int offsetDiff = targetDateTime.getOffset().getTotalSeconds() - 
+
+            int offsetDiff = targetDateTime.getOffset().getTotalSeconds() -
                            sourceDateTime.getOffset().getTotalSeconds();
-            
+
             result.put("time_difference", Map.of(
                 "offset_difference_seconds", offsetDiff,
                 "offset_difference_hours", offsetDiff / 3600.0,
@@ -326,68 +332,68 @@ public class ConvertTimezone implements MCPTool {
                 "same_instant", true
             ));
         }
-        
+
         // DST情報
         if (includeDstInfo) {
             result.put("dst_info", getDSTInfo(targetZone, targetDateTime));
         }
-        
+
         // 日付コンポーネント
         result.put("components", Map.of(
             "date", targetDateTime.toLocalDate().toString(),
             "time", targetDateTime.toLocalTime().toString(),
             "day_of_week", targetDateTime.getDayOfWeek().toString()
         ));
-        
+
         return result;
     }
-    
+
     /**
      * 時差マトリックスを作成
      */
     private Map<String, Map<String, String>> createTimeMatrix(
             ZonedDateTime baseTime, List<String> timezones) {
-        
+
         Map<String, Map<String, String>> matrix = new HashMap<>();
-        
+
         for (String tz1 : timezones) {
             Map<String, String> row = new HashMap<>();
             ZoneId zone1 = ZoneId.of(tz1);
             ZonedDateTime time1 = baseTime.withZoneSameInstant(zone1);
-            
+
             for (String tz2 : timezones) {
                 if (tz1.equals(tz2)) {
                     row.put(tz2, "0h");
                 } else {
                     ZoneId zone2 = ZoneId.of(tz2);
                     ZonedDateTime time2 = baseTime.withZoneSameInstant(zone2);
-                    
-                    int offsetDiff = time2.getOffset().getTotalSeconds() - 
+
+                    int offsetDiff = time2.getOffset().getTotalSeconds() -
                                    time1.getOffset().getTotalSeconds();
                     row.put(tz2, formatDuration(offsetDiff));
                 }
             }
-            
+
             matrix.put(tz1, row);
         }
-        
+
         return matrix;
     }
-    
+
     /**
      * 時間差をフォーマット
      */
     private String formatDuration(int seconds) {
         int hours = seconds / 3600;
         int minutes = (Math.abs(seconds) % 3600) / 60;
-        
+
         if (minutes == 0) {
             return String.format("%+dh", hours);
         } else {
             return String.format("%+dh%02dm", hours, minutes);
         }
     }
-    
+
     /**
      * 日時をフォーマット
      */
@@ -404,18 +410,18 @@ public class ConvertTimezone implements MCPTool {
             }
         }
     }
-    
+
     /**
      * DST情報を取得
      */
     private Map<String, Object> getDSTInfo(ZoneId zoneId, ZonedDateTime dateTime) {
         Map<String, Object> info = new HashMap<>();
-        
+
         try {
             var rules = zoneId.getRules();
             boolean isDst = rules.isDaylightSavings(dateTime.toInstant());
             info.put("is_dst", isDst);
-            
+
             if (isDst) {
                 Duration dstOffset = rules.getDaylightSavings(dateTime.toInstant());
                 info.put("dst_offset", dstOffset.toString());
@@ -423,10 +429,10 @@ public class ConvertTimezone implements MCPTool {
         } catch (Exception e) {
             info.put("available", false);
         }
-        
+
         return info;
     }
-    
+
     /**
      * タイムゾーンをパース
      */
@@ -437,7 +443,7 @@ public class ConvertTimezone implements MCPTool {
             throw ToolExecutionException.invalidTimezone(timezone);
         }
     }
-    
+
     /**
      * パラメータ取得（型安全）
      */
@@ -446,7 +452,7 @@ public class ConvertTimezone implements MCPTool {
         Object value = parameters.get(key);
         return value != null ? (T) value : defaultValue;
     }
-    
+
     /**
      * リストパラメータ取得
      */
@@ -458,7 +464,7 @@ public class ConvertTimezone implements MCPTool {
         }
         return new ArrayList<>();
     }
-    
+
     /**
      * マップパラメータ取得
      */
@@ -470,12 +476,12 @@ public class ConvertTimezone implements MCPTool {
         }
         return null;
     }
-    
+
     @Override
     public boolean isCacheable() {
         return true; // 同じ変換はキャッシュ可能
     }
-    
+
     @Override
     public int getCacheTTL() {
         return 300; // 5分間キャッシュ

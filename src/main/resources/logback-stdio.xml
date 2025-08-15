@@ -1,0 +1,31 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<configuration>
+    <!-- ファイルアペンダー（標準出力は使わない） -->
+    <appender name="FILE" class="ch.qos.logback.core.FileAppender">
+        <file>mcp-stdio.log</file>
+        <encoder>
+            <pattern>%d{yyyy-MM-dd HH:mm:ss.SSS} [%thread] %-5level %logger{36} - %msg%n</pattern>
+        </encoder>
+    </appender>
+    
+    <!-- ローリングファイルアペンダー -->
+    <appender name="ROLLING" class="ch.qos.logback.core.rolling.RollingFileAppender">
+        <file>logs/mcp-stdio.log</file>
+        <rollingPolicy class="ch.qos.logback.core.rolling.TimeBasedRollingPolicy">
+            <fileNamePattern>logs/mcp-stdio.%d{yyyy-MM-dd}.log</fileNamePattern>
+            <maxHistory>30</maxHistory>
+        </rollingPolicy>
+        <encoder>
+            <pattern>%d{yyyy-MM-dd HH:mm:ss.SSS} [%thread] %-5level %logger{36} - %msg%n</pattern>
+        </encoder>
+    </appender>
+    
+    <!-- ルートロガー -->
+    <root level="INFO">
+        <appender-ref ref="FILE"/>
+        <appender-ref ref="ROLLING"/>
+    </root>
+    
+    <!-- アプリケーションロガー -->
+    <logger name="com.github.yuu1111" level="DEBUG"/>
+</configuration>

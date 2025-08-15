@@ -3,7 +3,8 @@ package com.github.yuu1111.tools.impl;
 import com.github.yuu1111.protocol.MCPError;
 import com.github.yuu1111.services.calendar.CalendarService;
 import com.github.yuu1111.tools.MCPTool;
-import com.github.yuu1111.tools.ToolInfo;
+import com.github.yuu1111.tools.ToolResponse;
+import com.github.yuu1111.tools.ToolExecutionException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -31,46 +32,47 @@ public class GetReligiousCalendar implements MCPTool {
     }
     
     @Override
-    public ToolInfo getInfo() {
-        return ToolInfo.builder()
-            .name(getName())
-            .description("Convert Gregorian date to various religious calendars")
-            .inputSchema(Map.of(
-                "type", "object",
-                "properties", Map.of(
-                    "date", Map.of(
-                        "type", "string",
-                        "description", "Date in ISO 8601 format (YYYY-MM-DD)",
-                        "example", "2024-01-15"
-                    ),
-                    "calendar_type", Map.of(
-                        "type", "string",
-                        "description", "Type of religious calendar",
-                        "enum", new String[]{"islamic", "hebrew", "buddhist", "hindu", "chinese", "japanese"},
-                        "example", "islamic"
-                    ),
-                    "include_holidays", Map.of(
-                        "type", "boolean",
-                        "description", "Include religious holidays and observances",
-                        "default", true
-                    )
-                ),
-                "required", new String[]{"date", "calendar_type"}
-            ))
-            .build();
+    public String getDescription() {
+        return "Convert Gregorian date to various religious calendars";
     }
     
     @Override
-    public Object execute(Map<String, Object> parameters) throws MCPError {
+    public Map<String, Object> getParameterSchema() {
+        return Map.of(
+            "type", "object",
+            "properties", Map.of(
+                "date", Map.of(
+                    "type", "string",
+                    "description", "Date in ISO 8601 format (YYYY-MM-DD)",
+                    "example", "2024-01-15"
+                ),
+                "calendar_type", Map.of(
+                    "type", "string",
+                    "description", "Type of religious calendar",
+                    "enum", new String[]{"islamic", "hebrew", "buddhist", "hindu", "chinese", "japanese"},
+                    "example", "islamic"
+                ),
+                "include_holidays", Map.of(
+                    "type", "boolean",
+                    "description", "Include religious holidays and observances",
+                    "default", true
+                )
+            ),
+            "required", new String[]{"date", "calendar_type"}
+        );
+    }
+    
+    @Override
+    public ToolResponse execute(Map<String, Object> parameters) throws ToolExecutionException {
         // パラメータ検証
         String dateStr = (String) parameters.get("date");
         if (dateStr == null || dateStr.isEmpty()) {
-            throw MCPError.invalidParams("date parameter is required");
+            throw ToolExecutionException.invalidParameter("date", "parameter is required");
         }
         
         String calendarType = (String) parameters.get("calendar_type");
         if (calendarType == null || calendarType.isEmpty()) {
-            throw MCPError.invalidParams("calendar_type parameter is required");
+            throw ToolExecutionException.invalidParameter("calendar_type", "parameter is required");
         }
         
         Boolean includeHolidays = (Boolean) parameters.getOrDefault("include_holidays", true);
@@ -84,7 +86,7 @@ public class GetReligiousCalendar implements MCPTool {
             try {
                 type = CalendarService.CalendarType.valueOf(calendarType.toUpperCase());
             } catch (IllegalArgumentException e) {
-                throw MCPError.invalidParams("Invalid calendar_type: " + calendarType);
+                throw ToolExecutionException.invalidParameter("calendar_type", "Invalid type: " + calendarType);
             }
             
             // 宗教暦に変換
@@ -109,13 +111,13 @@ public class GetReligiousCalendar implements MCPTool {
             ));
             
             logger.info("Converted {} to {} calendar", dateStr, calendarType);
-            return response;
+            return ToolResponse.of(response);
             
         } catch (DateTimeParseException e) {
-            throw MCPError.invalidParams("Invalid date format: " + dateStr);
+            throw ToolExecutionException.invalidParameter("date", "Invalid format: " + dateStr);
         } catch (Exception e) {
             logger.error("Failed to convert calendar", e);
-            throw MCPError.internalError("Failed to convert calendar: " + e.getMessage());
+            throw new ToolExecutionException("Failed to convert calendar: " + e.getMessage(), e);
         }
     }
 }

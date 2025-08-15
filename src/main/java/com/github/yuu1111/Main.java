@@ -134,8 +134,17 @@ public class Main {
      * サーバー設定を構築
      */
     private static ServerConfig buildServerConfig(Properties properties) {
+        // システムプロパティ、環境変数、設定ファイルの順で優先
+        String portStr = System.getProperty("server.port");
+        if (portStr == null) {
+            portStr = System.getenv("SERVER_PORT");
+        }
+        if (portStr == null) {
+            portStr = properties.getProperty("server.port", "3000");
+        }
+        
         return ServerConfig.builder()
-            .port(Integer.parseInt(properties.getProperty("server.port", "3000")))
+            .port(Integer.parseInt(portStr))
             .host(properties.getProperty("server.host", "localhost"))
             .enableWebSocket(Boolean.parseBoolean(
                 properties.getProperty("server.enable.websocket", "true")))
