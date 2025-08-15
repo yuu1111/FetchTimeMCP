@@ -78,6 +78,28 @@
       <version>0.0.9</version>
     </dependency>
     
+    <!-- Phase2: 高度な機能 -->
+    <!-- 国際化カレンダー -->
+    <dependency>
+      <groupId>com.ibm.icu</groupId>
+      <artifactId>icu4j</artifactId>
+      <version>74.2</version>
+    </dependency>
+    
+    <!-- キャッシング -->
+    <dependency>
+      <groupId>com.github.ben-manes.caffeine</groupId>
+      <artifactId>caffeine</artifactId>
+      <version>3.1.8</version>
+    </dependency>
+    
+    <!-- 天文計算 -->
+    <dependency>
+      <groupId>org.shredzone.commons</groupId>
+      <artifactId>commons-suncalc</artifactId>
+      <version>3.7</version>
+    </dependency>
+    
     <!-- 設定管理 -->
     <dependency>
       <groupId>org.apache.commons</groupId>

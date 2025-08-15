@@ -4,6 +4,8 @@ import com.github.yuu1111.server.MCPServer;
 import com.github.yuu1111.server.ServerConfig;
 import com.github.yuu1111.tools.impl.GetCurrentTime;
 import com.github.yuu1111.tools.impl.ConvertTimezone;
+import com.github.yuu1111.tools.impl.GetReligiousCalendar;
+import com.github.yuu1111.tools.impl.GetAstronomicalInfo;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -154,13 +156,15 @@ public class Main {
      * ツールを登録
      */
     private static void registerTools(MCPServer server) {
-        // 基本ツール
+        // Phase 1: 基本ツール
         server.registerTool(new GetCurrentTime());
         server.registerTool(new ConvertTimezone());
         
-        // Phase 2以降で追加予定のツール
-        // server.registerTool(new GetReligiousCalendar());
-        // server.registerTool(new GetAstronomicalInfo());
+        // Phase 2: 高度な機能
+        server.registerTool(new GetReligiousCalendar());
+        server.registerTool(new GetAstronomicalInfo());
+        
+        // Phase 3以降で追加予定のツール
         // server.registerTool(new GetTimeDifference());
         // server.registerTool(new GetHolidays());
         

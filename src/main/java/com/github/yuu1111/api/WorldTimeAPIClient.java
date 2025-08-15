@@ -84,7 +84,8 @@ public class WorldTimeAPIClient {
             try {
                 return getTimeSync(timezone);
             } catch (IOException e) {
-                throw new RuntimeException("Failed to get time for timezone: " + timezone, e);
+                throw new RuntimeException(
+                    "Failed to get time for timezone: %s".formatted(timezone), e);
             }
         });
     }
@@ -147,7 +148,7 @@ public class WorldTimeAPIClient {
      * 同期的にタイムゾーンリストを取得
      */
     public List<String> getTimezonesSync() throws IOException {
-        String url = BASE_URL + "/timezone";
+        String url = "%s/timezone".formatted(BASE_URL);
         Request request = new Request.Builder()
             .url(url)
             .get()
@@ -159,10 +160,10 @@ public class WorldTimeAPIClient {
             }
             
             String body = response.body().string();
-            List<String> timezones = objectMapper.readValue(body, 
-                new TypeReference<List<String>>() {});
-            
-            return timezones;
+
+          return objectMapper.readValue(body,
+              new TypeReference<>() {
+              });
         }
     }
     
@@ -175,7 +176,7 @@ public class WorldTimeAPIClient {
                 String url = String.format("%s/ip/%s", BASE_URL, ipAddress);
                 return fetchTimeInfo(url);
             } catch (IOException e) {
-                throw new RuntimeException("Failed to get time for IP: " + ipAddress, e);
+                throw new RuntimeException("Failed to get time for IP: %s".formatted(ipAddress), e);
             }
         });
     }
@@ -195,8 +196,9 @@ public class WorldTimeAPIClient {
             }
             
             String body = response.body().string();
-            Map<String, Object> data = objectMapper.readValue(body, 
-                new TypeReference<Map<String, Object>>() {});
+            Map<String, Object> data = objectMapper.readValue(body,
+                new TypeReference<>() {
+                });
             
             return parseTimeInfo(data);
         }
@@ -233,15 +235,16 @@ public class WorldTimeAPIClient {
         
         switch (response.code()) {
             case 404:
-                throw new IOException("Timezone not found: " + errorBody);
+                throw new IOException("Timezone not found: %s".formatted(errorBody));
             case 429:
                 throw new IOException("Rate limit exceeded");
             case 500:
             case 502:
             case 503:
-                throw new IOException("Server error: " + response.code());
+                throw new IOException("Server error: %d".formatted(response.code()));
             default:
-                throw new IOException("Unexpected response: " + response.code() + " - " + errorBody);
+                throw new IOException(
+                    "Unexpected response: %d - %s".formatted(response.code(), errorBody));
         }
     }
     
